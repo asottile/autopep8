@@ -1340,7 +1340,7 @@ sql = 'update %s set %s %s' % (from_table,
 
 sql = 'update %s set %s %s' % (from_table,
                                ','.join(['%s=%s' % (col, col)
-                                         for col in cols]),
+                                        for col in cols]),
                                where_clause)
 """
         with autopep8_context(line) as result:
