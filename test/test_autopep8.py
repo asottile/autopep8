@@ -19,6 +19,7 @@ import time
 import contextlib
 import io
 import shutil
+import stat
 from subprocess import Popen, PIPE
 from tempfile import mkstemp, mkdtemp
 import tokenize
@@ -884,15 +885,6 @@ while True:
 """
         with autopep8_context(line) as result:
             self.assertEqual(fixed, result)
-
-    def test_e101_with_indent_size_0(self):
-        line = """\
-while True:
-    if True:
-    \t1
-"""
-        with autopep8_context(line, options=['--indent-size=0']) as result:
-            self.assertEqual(line, result)
 
     def test_e101_with_indent_size_1(self):
         line = """\
@@ -4438,6 +4430,12 @@ else:
                                              '--select=W292']) as result:
             self.assertEqual(fixed, result)
 
+    def test_w292_ignore(self):
+        line = "1\n2"
+        with autopep8_context(line, options=['--aggressive',
+                                             '--ignore=W292']) as result:
+            self.assertEqual(line, result)
+
     def test_w293(self):
         line = '1\n \n2\n'
         fixed = '1\n\n2\n'
@@ -5220,6 +5218,32 @@ def f():
         with autopep8_context(test_code) as result:
             self.assertEqual(expected_output, result)
 
+    def test_autopep8_disable_multi(self):
+        test_code = """\
+fix=1
+# autopep8: off
+skip=1
+# autopep8: on
+fix=2
+# autopep8: off
+skip=2
+# autopep8: on
+fix=3
+"""
+        expected_output = """\
+fix = 1
+# autopep8: off
+skip=1
+# autopep8: on
+fix = 2
+# autopep8: off
+skip=2
+# autopep8: on
+fix = 3
+"""
+        with autopep8_context(test_code) as result:
+            self.assertEqual(expected_output, result)
+
     def test_fmt_disable(self):
         test_code = """\
 # fmt: off
@@ -5290,6 +5314,32 @@ print( 123 )
 print( 123 )
 # fmt: on
 print(123)
+"""
+        with autopep8_context(test_code) as result:
+            self.assertEqual(expected_output, result)
+
+    def test_fmt_multi_disable_and_reenable(self):
+        test_code = """\
+fix=1
+# fmt: off
+skip=1
+# fmt: on
+fix=2
+# fmt: off
+skip=2
+# fmt: on
+fix=3
+"""
+        expected_output = """\
+fix = 1
+# fmt: off
+skip=1
+# fmt: on
+fix = 2
+# fmt: off
+skip=2
+# fmt: on
+fix = 3
 """
         with autopep8_context(test_code) as result:
             self.assertEqual(expected_output, result)
@@ -5514,6 +5564,19 @@ def f():
         error = p.communicate()[1].decode('utf-8')
         self.assertIn('cannot', error)
 
+    def test_indent_size_is_zero(self):
+        line = "'abc'\n"
+        with autopep8_subprocess(line, ['--indent-size=0']) as (result, retcode):
+            self.assertEqual(retcode, autopep8.EXIT_CODE_ARGPARSE_ERROR)
+
+    def test_exit_code_with_io_error(self):
+        line = "import sys\ndef a():\n    print(1)\n"
+        with readonly_temporary_file_context(line) as filename:
+            p = Popen(list(AUTOPEP8_CMD_TUPLE) + ['--in-place', filename],
+                      stdout=PIPE, stderr=PIPE)
+            p.communicate()
+            self.assertEqual(p.returncode, autopep8.EXIT_CODE_ERROR)
+
     def test_pep8_passes(self):
         line = "'abc'  \n"
         fixed = "'abc'\n"
@@ -5659,7 +5722,6 @@ for i in range(3):
 
     def test_parallel_jobs_with_diff_option(self):
         line = "'abc'  \n"
-        fixed = "'abc'\n"
 
         with temporary_file_context(line) as filename_a:
             with temporary_file_context(line) as filename_b:
@@ -5668,6 +5730,7 @@ for i in range(3):
                           ['--jobs=3', '--diff'], stdout=PIPE)
                 p.wait()
                 output = p.stdout.read().decode()
+                p.stdout.close()
 
                 actual_diffs = []
                 for filename in files:
@@ -5678,9 +5741,31 @@ for i in range(3):
 -'abc'  
 +'abc'
 """.format(filename=filename))
-                self.assertEqual(0, p.returncode)
+                self.assertEqual(p.returncode, autopep8.EXIT_CODE_OK)
                 for actual_diff in actual_diffs:
                     self.assertIn(actual_diff, output)
+
+    def test_parallel_jobs_with_inplace_option_and_io_error(self):
+        temp_directory = mkdtemp(dir='.')
+        try:
+            file_a = os.path.join(temp_directory, 'a.py')
+            with open(file_a, 'w') as output:
+                output.write("'abc'  \n")
+            os.chmod(file_a, stat.S_IRUSR)  # readonly
+
+            os.mkdir(os.path.join(temp_directory, 'd'))
+            file_b = os.path.join(temp_directory, 'd', 'b.py')
+            with open(file_b, 'w') as output:
+                output.write('123  \n')
+            os.chmod(file_b, stat.S_IRUSR)
+
+            p = Popen(list(AUTOPEP8_CMD_TUPLE) +
+                      [temp_directory, '--recursive', '--in-place'],
+                      stdout=PIPE, stderr=PIPE)
+            p.communicate()[0].decode('utf-8')
+            self.assertEqual(p.returncode, autopep8.EXIT_CODE_ERROR)
+        finally:
+            shutil.rmtree(temp_directory)
 
     def test_parallel_jobs_with_automatic_cpu_count(self):
         line = "'abc'  \n"
@@ -5862,7 +5947,7 @@ for i in range(3):
             except SystemExit as e:
                 exception = e
         self.assertTrue(exception)
-        self.assertEqual(exception.code, 2)
+        self.assertEqual(exception.code, autopep8.EXIT_CODE_ARGPARSE_ERROR)
 
     def test_standard_out_should_use_native_line_ending(self):
         line = '1\r\n2\r\n3\r\n'
@@ -6029,9 +6114,10 @@ class ConfigurationFileTests(unittest.TestCase):
             target_filename = os.path.join(dirname, "foo.py")
             with open(target_filename, "w") as fp:
                 fp.write(line)
-            p = Popen(list(AUTOPEP8_CMD_TUPLE) + [target_filename], stdout=PIPE)
+            p = Popen(list(AUTOPEP8_CMD_TUPLE) +
+                      [target_filename], stdout=PIPE)
             self.assertEqual(p.communicate()[0].decode("utf-8"), line)
-            self.assertEqual(p.returncode, 0)
+            self.assertEqual(p.returncode, autopep8.EXIT_CODE_OK)
 
     def test_pyproject_toml_with_verbose_option(self):
         """override to flake8 config"""
@@ -6044,11 +6130,12 @@ class ConfigurationFileTests(unittest.TestCase):
             target_filename = os.path.join(dirname, "foo.py")
             with open(target_filename, "w") as fp:
                 fp.write(line)
-            p = Popen(list(AUTOPEP8_CMD_TUPLE) + [target_filename, "-vvv"], stdout=PIPE)
+            p = Popen(list(AUTOPEP8_CMD_TUPLE) +
+                      [target_filename, "-vvv"], stdout=PIPE)
             output = p.communicate()[0].decode("utf-8")
             self.assertTrue(line in output)
             self.assertTrue(verbose_line in output)
-            self.assertEqual(p.returncode, 0)
+            self.assertEqual(p.returncode, autopep8.EXIT_CODE_OK)
 
     def test_pyproject_toml_with_iterable_value(self):
         line = "a =  1\n"
@@ -6059,10 +6146,11 @@ class ConfigurationFileTests(unittest.TestCase):
             target_filename = os.path.join(dirname, "foo.py")
             with open(target_filename, "w") as fp:
                 fp.write(line)
-            p = Popen(list(AUTOPEP8_CMD_TUPLE) + [target_filename, ], stdout=PIPE)
+            p = Popen(list(AUTOPEP8_CMD_TUPLE) +
+                      [target_filename, ], stdout=PIPE)
             output = p.communicate()[0].decode("utf-8")
             self.assertTrue(line in output)
-            self.assertEqual(p.returncode, 0)
+            self.assertEqual(p.returncode, autopep8.EXIT_CODE_OK)
 
 
 class ExperimentalSystemTests(unittest.TestCase):
@@ -7370,6 +7458,19 @@ def temporary_file_context(text, suffix='', prefix=''):
                                      encoding='utf-8',
                                      mode='w') as temp_file:
         temp_file.write(text)
+    yield temporary[1]
+    os.remove(temporary[1])
+
+
+@contextlib.contextmanager
+def readonly_temporary_file_context(text, suffix='', prefix=''):
+    temporary = mkstemp(suffix=suffix, prefix=prefix)
+    os.close(temporary[0])
+    with autopep8.open_with_encoding(temporary[1],
+                                     encoding='utf-8',
+                                     mode='w') as temp_file:
+        temp_file.write(text)
+    os.chmod(temporary[1], stat.S_IRUSR)
     yield temporary[1]
     os.remove(temporary[1])
 
