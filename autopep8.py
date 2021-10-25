@@ -107,10 +107,14 @@ STARTSWITH_DEF_REGEX = re.compile(r'^(async\s+def|def)\s.*\):')
 DOCSTRING_START_REGEX = re.compile(r'^u?r?(?P<kind>["\']{3})')
 ENABLE_REGEX = re.compile(r'# *(fmt|autopep8): *on')
 DISABLE_REGEX = re.compile(r'# *(fmt|autopep8): *off')
-COMPARE_TYPE_REGEX = re.compile(r'\s*type(?:s.\w+Type|\s*\(\s*([^)]*[^ )])\s*\))\s*'
-                                r'(?:[=!]=|is(?:\s+not)?)\s+(?P<second>type\(\s*([^)]*[^ )])\s*\))')
-COMPARE_TYPE2_REGEX = re.compile(r'\s*(?P<t>\w+)\s*(?:[=!]=|is(?:\s+not)?)\s+'
-                                 r'type(?:s.\w+Type|\s*\(\s*([^)]*[^ )])\s*\))')
+COMPARE_TYPE_REGEX = re.compile(
+    r'\s*type(?:s.\w+Type|\s*\(\s*([^)]*[^ )])\s*\))\s*'
+    r'(?:[=!]=|is(?:\s+not)?)\s+(?P<second>type\(\s*([^)]*[^ )])\s*\))'
+)
+COMPARE_TYPE2_REGEX = re.compile(
+    r'\s*(?P<t>\w+)\s*(?:[=!]=|is(?:\s+not)?)\s+'
+    r'type(?:s.\w+Type|\s*\(\s*([^)]*[^ )])\s*\))'
+)
 
 EXIT_CODE_OK = 0
 EXIT_CODE_ERROR = 1
@@ -2256,7 +2260,11 @@ class ReformattedLines(object):
                 container.size + self._bracket_depth + 2)
         ):
 
-            if str(container)[0] == '(' and self._prev_item and self._prev_item.is_name:
+            if (
+                str(container)[0] == '(' and
+                self._prev_item and
+                self._prev_item.is_name
+            ):
                 # Don't split before the opening bracket of a call.
                 break_after_open_bracket = True
                 actual_indent = indent_amt + 4
