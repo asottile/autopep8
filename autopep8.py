@@ -117,6 +117,10 @@ STARTSWITH_DEF_REGEX = re.compile(r'^(async\s+def|def)\s.*\):')
 DOCSTRING_START_REGEX = re.compile(r'^u?r?(?P<kind>["\']{3})')
 ENABLE_REGEX = re.compile(r'# *(fmt|autopep8): *on')
 DISABLE_REGEX = re.compile(r'# *(fmt|autopep8): *off')
+COMPARE_TYPE_REGEX = re.compile(r'\s*type(?:s.\w+Type|\s*\(\s*([^)]*[^ )])\s*\))\s*'
+                                r'(?:[=!]=|is(?:\s+not)?)\s+(?P<second>type\(\s*([^)]*[^ )])\s*\))')
+COMPARE_TYPE2_REGEX = re.compile(r'\s*(?P<t>\w+)\s*(?:[=!]=|is(?:\s+not)?)\s+'
+                                 r'type(?:s.\w+Type|\s*\(\s*([^)]*[^ )])\s*\))')
 
 EXIT_CODE_OK = 0
 EXIT_CODE_ERROR = 1
@@ -144,7 +148,6 @@ SELECTED_GLOBAL_FIXED_METHOD_CODES = ['W602', ]
 
 # W602 is handled separately due to the need to avoid "with_traceback".
 CODE_TO_2TO3 = {
-    'E721': ['idioms'],
     'W601': ['has_key'],
     'W603': ['ne'],
     'W604': ['repr'],
@@ -463,6 +466,7 @@ class FixPEP8(object):
         - e502
         - e701,e702,e703,e704
         - e711,e712,e713,e714
+        - e721
         - e722
         - e731
         - w291
@@ -1232,6 +1236,27 @@ class FixPEP8(object):
                     new_target = '{}{} {}'.format(
                         new_target[:pos_start], 'is not', new_target[pos_end:])
                 self.source[line_index] = new_target
+
+    def fix_e721(self, result):
+        (line_index, _, target) = get_index_offset_contents(result,
+                                                            self.source)
+        match = COMPARE_TYPE_REGEX.search(target)
+        if match:
+            start = match.start()
+            end = match.end()
+            self.source[line_index] = '{} isinstance({}, {}){}'.format(
+                target[:start], match.group(1), match.group(2), target[end:]
+            )
+            return
+
+        # fallback. check TYPE == type(VALUE). ex) str == type('')
+        match = COMPARE_TYPE2_REGEX.search(target)
+        if match:
+            start = match.start()
+            end = match.end()
+            self.source[line_index] = '{} isinstance({}, {}){}'.format(
+                target[:start], match.group(2), match.group(1), target[end:]
+            )
 
     def fix_e722(self, result):
         """fix bare except"""
