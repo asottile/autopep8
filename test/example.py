@@ -143,19 +143,6 @@ def func_w602():
 
     raise 'string'
 
-
-def func_w603():
-    if 1 <> 2:
-        if 2 <> 2:
-            print(True)
-        else:
-            print(False)
-
-
-def func_w604():
-    a = 1.1
-    b = ```a```
-
 def func_e101():
 	print('abc')
 	if True:
