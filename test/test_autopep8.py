@@ -1756,6 +1756,20 @@ if True:
         with autopep8_context(line, options=['--hang-closing']) as result:
             self.assertEqual(fixed, result)
 
+    def test_e133_no_indentation_line(self):
+        line = """\
+e = [
+    1, 2
+]
+"""
+        fixed = """\
+e = [
+    1, 2
+    ]
+"""
+        with autopep8_context(line, options=['--hang-closing']) as result:
+            self.assertEqual(fixed, result)
+
     def test_e133_not_effected(self):
         line = """\
 if True:
@@ -3820,6 +3834,20 @@ GYakymOSMc = GYakymOSMW(GYakymOSMJ, GYakymOSMA, GYakymOSMr,
         with autopep8_context(line) as result:
             self.assertEqual(fixed, result)
 
+    @unittest.skipIf(
+        (sys.version_info.major >= 3 and sys.version_info.minor < 8)
+        or sys.version_info.major < 3,
+        "syntax error in Python3.7 and lower version",
+    )
+    def test_e501_with_pep572_assignment_expressions(self):
+        line = """\
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa = 1
+if bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb := aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:
+    print(bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb)
+"""
+        with autopep8_context(line, options=['-aa']) as result:
+            self.assertEqual(line, result)
+
     def test_e502(self):
         line = "print('abc'\\\n      'def')\n"
         fixed = "print('abc'\n      'def')\n"
@@ -5181,6 +5209,66 @@ fix = 1
 skip=1
 # fmt: on
 fix = 2
+# fmt: off
+skip=2
+# fmt: on
+fix = 3
+"""
+        with autopep8_context(test_code) as result:
+            self.assertEqual(expected_output, result)
+
+    def test_fmt_multi_disable_complex(self):
+        test_code = """\
+fix=1
+# fmt: off
+skip=1
+# fmt: off
+fix=2
+# fmt: off
+skip=2
+# fmt: on
+fix=3
+"""
+        expected_output = """\
+fix = 1
+# fmt: off
+skip=1
+# fmt: off
+fix=2
+# fmt: off
+skip=2
+# fmt: on
+fix = 3
+"""
+        with autopep8_context(test_code) as result:
+            self.assertEqual(expected_output, result)
+
+    def test_fmt_multi_disable_complex_multi(self):
+        test_code = """\
+fix=1
+# fmt: off
+skip=1
+# fmt: off
+fix=2
+# fmt: on
+fix=22
+# fmt: on
+fix=222
+# fmt: off
+skip=2
+# fmt: on
+fix=3
+"""
+        expected_output = """\
+fix = 1
+# fmt: off
+skip=1
+# fmt: off
+fix=2
+# fmt: on
+fix = 22
+# fmt: on
+fix = 222
 # fmt: off
 skip=2
 # fmt: on
