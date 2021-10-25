@@ -4292,6 +4292,28 @@ if role not in ("domaincontroller_master",
         with autopep8_context(line, options=['--aggressive']) as result:
             self.assertEqual(fixed, result)
 
+    def test_e721_with_ne(self):
+        line = "if str != type(''):\n    pass\n"
+        fixed = "if not isinstance('', str):\n    pass\n"
+        with autopep8_context(line, options=['--aggressive']) as result:
+            self.assertEqual(fixed, result)
+
+        line = "if str is not type(''):\n    pass\n"
+        fixed = "if not isinstance('', str):\n    pass\n"
+        with autopep8_context(line, options=['--aggressive']) as result:
+            self.assertEqual(fixed, result)
+
+    def test_e721_multiple(self):
+        line = "if type(a) != type(1) or type(a) == type(22):\n    pass\n"
+        fixed = "if not isinstance(a, type(1)) or isinstance(a, type(22)):\n    pass\n"
+        with autopep8_context(line, options=['--aggressive']) as result:
+            self.assertEqual(fixed, result)
+
+    def test_e721_multiple_no_effect(self):
+        line = "if type(a) != type(b) or type(a) == type(ccc):\n    pass\n"
+        with autopep8_context(line, options=['--aggressive']) as result:
+            self.assertEqual(line, result)
+
     def test_e722(self):
         line = "try:\n    print(a)\nexcept:\n    pass\n"
         fixed = "try:\n    print(a)\nexcept BaseException:\n    pass\n"
