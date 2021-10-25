@@ -44,6 +44,15 @@ test_fast:
 		--cov-report term-missing --cov autopep8 test/test_autopep8.py
 	@rm .pytest.coveragerc .coverage
 
+test_all:
+	pytest --cov-report xml --cov=autopep8
+	@${PYTHON} test/acid.py -aaa --experimental test/example.py
+	@${PYTHON} test/acid.py -aaa --experimental test/example_with_reduce.py
+	@${PYTHON} test/acid.py --pycodestyle= -aaa --compare-bytecode --experimental test/example.py
+	@${PYTHON} test/acid.py --pycodestyle= --aggressive --line-range 550 610 test/inspect_example.py
+	@${PYTHON} test/acid.py --pycodestyle= --line-range 289 925 test/vectors_example.py
+	@${PYTHON} test/test_suite.py
+
 coverage:
 	@coverage erase
 	@AUTOPEP8_COVERAGE=1 ${COVERAGE} run --branch --parallel-mode --omit='*/site-packages/*' test/test_autopep8.py
