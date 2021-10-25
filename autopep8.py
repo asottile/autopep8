@@ -83,12 +83,8 @@ import token
 import tokenize
 import warnings
 import ast
-try:
-    from configparser import ConfigParser as SafeConfigParser
-    from configparser import Error
-except ImportError:
-    from ConfigParser import SafeConfigParser
-    from ConfigParser import Error
+from configparser import ConfigParser as SafeConfigParser
+from configparser import Error
 
 import pycodestyle
 from pycodestyle import STARTSWITH_INDENT_STATEMENT_REGEX
