@@ -109,11 +109,15 @@ ENABLE_REGEX = re.compile(r'# *(fmt|autopep8): *on')
 DISABLE_REGEX = re.compile(r'# *(fmt|autopep8): *off')
 COMPARE_TYPE_REGEX = re.compile(
     r'\s*type(?:s.\w+Type|\s*\(\s*([^)]*[^ )])\s*\))\s*'
-    r'(?:[=!]=|is(?:\s+not)?)\s+(?P<second>type\(\s*([^)]*[^ )])\s*\))'
+    r'(?P<cond>[=!]=|is(?:\s+not)?)\s+(?P<second>type\(\s*([^)]*[^ )])\s*\))'
 )
 COMPARE_TYPE2_REGEX = re.compile(
-    r'\s*(?P<t>\w+)\s*(?:[=!]=|is(?:\s+not)?)\s+'
-    r'type(?:s.\w+Type|\s*\(\s*([^)]*[^ )])\s*\))'
+    r'\s*(?P<t>\w+)\s*(?P<cond>[=!]=|is(?:\s+not)?)\s+'
+    r'type(?:s.\w+Type|\s*\((?P<s>\s*([^)]*[^ )]))\s*\))'
+)
+COMPARE_TYPE3_REGEX = re.compile(
+    r'\s*type(?:s.\w+Type|\s*\(\s*([^)]*[^ )])\s*\))\s*'
+    r'(?P<cond>[=!]=|is(?:\s+not)?)\s+(?P<second>types.\w+Type)'
 )
 
 EXIT_CODE_OK = 0
@@ -1238,20 +1242,34 @@ class FixPEP8(object):
                                                             self.source)
         match = COMPARE_TYPE_REGEX.search(target)
         if match:
-            start = match.start()
-            end = match.end()
-            self.source[line_index] = '{} isinstance({}, {}){}'.format(
-                target[:start], match.group(1), match.group(2), target[end:]
+            start = target[:match.start()]
+            end = target[match.end():]
+            cond = match.group(2)
+            cond_stmt = "not " if cond in ("!=", "is not") else ""
+            self.source[line_index] = '{} {}isinstance({}, {}){}'.format(
+                start, cond_stmt, match.group(1), match.group(3), end
             )
             return
 
         # fallback. check TYPE == type(VALUE). ex) str == type('')
         match = COMPARE_TYPE2_REGEX.search(target)
+        if match and match.group(3) is not None:
+            start = target[:match.start()]
+            end = target[match.end():]
+            cond = match.group(2)
+            cond_stmt = "not " if cond in ("!=", "is not") else ""
+            self.source[line_index] = '{} {}isinstance({}, {}){}'.format(
+                start, cond_stmt, match.group(3), match.group(1), end,
+            )
+
+        match = COMPARE_TYPE3_REGEX.search(target)
         if match:
-            start = match.start()
-            end = match.end()
-            self.source[line_index] = '{} isinstance({}, {}){}'.format(
-                target[:start], match.group(2), match.group(1), target[end:]
+            start = target[:match.start()]
+            end = target[match.end():]
+            cond = match.group(2)
+            cond_stmt = "not " if cond in ("!=", "is not") else ""
+            self.source[line_index] = '{} {}isinstance({}, {}){}'.format(
+                start, cond_stmt, match.group(1), match.group(3), end,
             )
 
     def fix_e722(self, result):
