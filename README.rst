@@ -66,7 +66,12 @@ Before running autopep8.
         'more':{'inner':'This whole logical line should be wrapped.',some_tuple:[1,
         20,300,40000,500000000,60000000000000000]}}
         return (some_tuple, some_variable)
-    def example2(): return {'has_key() is deprecated':True}.has_key({'f':2}.has_key(''));
+    v1 = [100]
+    def example2():
+        match v1:
+            case[100]: print(100)
+            case _:
+                print("other")
     class Example3(   object ):
         def __init__    ( self, bar ):
          #Comments should have a space after the hash.
@@ -111,7 +116,14 @@ After running autopep8.
         return (some_tuple, some_variable)
 
 
-    def example2(): return ('' in {'f': 2}) in {'has_key() is deprecated': True}
+    v1 = [100]
+
+
+    def example2():
+        match v1:
+            case[100]: print(100)
+            case _:
+                print("other")
 
 
     class Example3(object):
@@ -135,14 +147,14 @@ Options::
                     [--experimental] [--exclude globs] [--list-fixes]
                     [--ignore errors] [--select errors] [--max-line-length n]
                     [--line-range line line] [--hang-closing] [--exit-code]
-                    [files [files ...]]
+                    [files ...]
 
     Automatically formats Python code to conform to the PEP 8 style guide.
 
     positional arguments:
       files                 files to format or '-' for standard in
 
-    optional arguments:
+    options:
       -h, --help            show this help message and exit
       --version             show program's version number and exit
       -v, --verbose         print verbose messages; multiple -v result in more
@@ -336,9 +348,6 @@ function:
 Or with options:
 
     >>> import autopep8
-    >>> autopep8.fix_code('x.has_key(y)\n',
-    ...                   options={'aggressive': 1})
-    'y in x\n'
     >>> autopep8.fix_code('print( 123 )\n',
     ...                   options={'ignore': ['E']})
     'print( 123 )\n'
