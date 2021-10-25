@@ -46,5 +46,5 @@ if isinstance(res, str):
     pass
 if isinstance(res, types.MethodType):
     pass
-if not isinstance(a, type(b)) or isinstance(a, type(ccc)):
+if not isinstance(a, type(2)) or isinstance(a, type(33)):
     pass
