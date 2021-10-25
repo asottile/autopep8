@@ -138,7 +138,6 @@ SELECTED_GLOBAL_FIXED_METHOD_CODES = ['W602', ]
 
 # W602 is handled separately due to the need to avoid "with_traceback".
 CODE_TO_2TO3 = {
-    'W603': ['ne'],
     'W604': ['repr'],
     'W690': ['apply',
              'except',

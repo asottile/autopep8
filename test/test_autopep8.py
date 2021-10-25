@@ -982,11 +982,11 @@ if True:
 
     def test_e101_should_ignore_multiline_strings_complex(self):
         line = """\
-print(3 <> 4, '''
+print(3 != 4, '''
 while True:
     if True:
     \t1
-\t''', 4 <> 5)
+\t''', 4 != 5)
 """
         fixed = """\
 print(3 != 4, '''
@@ -4341,56 +4341,6 @@ def tmp(g):
         with autopep8_context(line) as result:
             self.assertEqual(fixed, result)
 
-    def test_w191_should_ignore_multiline_strings(self):
-        line = """\
-print(3 <> 4, '''
-while True:
-    if True:
-    \t1
-\t''', 4 <> 5)
-if True:
-\t123
-"""
-        fixed = """\
-print(3 != 4, '''
-while True:
-    if True:
-    \t1
-\t''', 4 != 5)
-if True:
-    123
-"""
-        with autopep8_context(line, options=['--aggressive']) as result:
-            self.assertEqual(fixed, result)
-
-    def test_w191_should_ignore_tabs_in_strings(self):
-        line = """\
-if True:
-\tx = '''
-\t\tblah
-\tif True:
-\t1
-\t'''
-if True:
-\t123
-else:
-\t32
-"""
-        fixed = """\
-if True:
-    x = '''
-\t\tblah
-\tif True:
-\t1
-\t'''
-if True:
-    123
-else:
-    32
-"""
-        with autopep8_context(line, options=['--aggressive']) as result:
-            self.assertEqual(fixed, result)
-
     def test_w291(self):
         line = "print 'a b '\t \n"
         fixed = "print 'a b '\n"
@@ -4916,7 +4866,7 @@ raise ValueError("error")
             self.assertEqual(fixed, result)
 
     def test_w603(self):
-        line = 'if 2 <> 2:\n    print False'
+        line = 'if 2 != 2:\n    print False'
         fixed = 'if 2 != 2:\n    print False\n'
         with autopep8_context(line, options=['--aggressive']) as result:
             self.assertEqual(fixed, result)
