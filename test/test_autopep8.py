@@ -327,10 +327,6 @@ def foo():
             'print( 123 )\n',
             autopep8.fix_code('print( 123 )\n', options={'ignore': ['E']}))
 
-        self.assertEqual(
-            'y in x\n',
-            autopep8.fix_code('x.has_key(y)\n', options={'aggressive': True}))
-
     def test_fix_code_with_bad_options(self):
         with self.assertRaises(ValueError):
             autopep8.fix_code('print( 123 )\n', options={'ignor': ['W']})
@@ -4749,91 +4745,6 @@ if True:
         with autopep8_context(line, options=['-aa', '--select=E,W5']) as result:
             self.assertEqual(fixed, result)
         with autopep8_context(line, options=['-aa', '--select=E,W50']) as result:
-            self.assertEqual(fixed, result)
-
-    def test_w601(self):
-        line = 'a = {0: 1}\na.has_key(0)\n'
-        fixed = 'a = {0: 1}\n0 in a\n'
-        with autopep8_context(line, options=['--aggressive']) as result:
-            self.assertEqual(fixed, result)
-
-    def test_w601_word(self):
-        line = 'my_dict = {0: 1}\nmy_dict.has_key(0)\n'
-        fixed = 'my_dict = {0: 1}\n0 in my_dict\n'
-        with autopep8_context(line, options=['--aggressive']) as result:
-            self.assertEqual(fixed, result)
-
-    def test_w601_conditional(self):
-        line = 'a = {0: 1}\nif a.has_key(0):\n    print 1\n'
-        fixed = 'a = {0: 1}\nif 0 in a:\n    print 1\n'
-        with autopep8_context(line, options=['--aggressive']) as result:
-            self.assertEqual(fixed, result)
-
-    def test_w601_self(self):
-        line = 'self.a.has_key(0)\n'
-        fixed = '0 in self.a\n'
-        with autopep8_context(line, options=['--aggressive']) as result:
-            self.assertEqual(fixed, result)
-
-    def test_w601_self_with_conditional(self):
-        line = 'if self.a.has_key(0):\n    print 1\n'
-        fixed = 'if 0 in self.a:\n    print 1\n'
-        with autopep8_context(line, options=['--aggressive']) as result:
-            self.assertEqual(fixed, result)
-
-    def test_w601_with_multiple(self):
-        line = 'a.has_key(0) and b.has_key(0)\n'
-        fixed = '0 in a and 0 in b\n'
-        with autopep8_context(line, options=['--aggressive']) as result:
-            self.assertEqual(fixed, result)
-
-    def test_w601_with_multiple_nested(self):
-        line = 'alpha.has_key(nested.has_key(12)) and beta.has_key(1)\n'
-        fixed = '(12 in nested) in alpha and 1 in beta\n'
-        with autopep8_context(line, options=['--aggressive']) as result:
-            self.assertEqual(fixed, result)
-
-    def test_w601_with_more_complexity(self):
-        line = 'y.has_key(0) + x.has_key(x.has_key(0) + x.has_key(x.has_key(0) + x.has_key(1)))\n'
-        fixed = '(0 in y) + ((0 in x) + ((0 in x) + (1 in x) in x) in x)\n'
-        with autopep8_context(line, options=['--aggressive']) as result:
-            self.assertEqual(fixed, result)
-
-    def test_w601_precedence(self):
-        line = 'if self.a.has_key(1 + 2):\n    print 1\n'
-        fixed = 'if 1 + 2 in self.a:\n    print 1\n'
-        with autopep8_context(line, options=['--aggressive']) as result:
-            self.assertEqual(fixed, result)
-
-    def test_w601_with_parens(self):
-        line = 'foo(12) in alpha\n'
-        with autopep8_context(line, options=['--aggressive']) as result:
-            self.assertEqual(line, result)
-
-    def test_w601_with_multiline(self):
-        line = """\
-a.has_key(
-    0
-)
-"""
-        fixed = '0 in a\n'
-        with autopep8_context(line, options=['--aggressive']) as result:
-            self.assertEqual(fixed, result)
-
-    def test_w601_with_non_ascii(self):
-        line = """\
-# -*- coding: utf-8 -*-
-## éはe
-correct = dict().has_key('good syntax ?')
-"""
-
-        fixed = """\
-# -*- coding: utf-8 -*-
-# éはe
-correct = 'good syntax ?' in dict()
-"""
-
-        with autopep8_context(line, options=['--aggressive']) as result:
             self.assertEqual(fixed, result)
 
     def test_w602_arg_is_string(self):
