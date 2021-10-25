@@ -4899,24 +4899,6 @@ raise ValueError("error")
         with autopep8_context(line, options=['--aggressive']) as result:
             self.assertEqual(fixed, result)
 
-    def test_w604(self):
-        line = '`1`\n'
-        fixed = 'repr(1)\n'
-        with autopep8_context(line, options=['--aggressive']) as result:
-            self.assertEqual(fixed, result)
-
-    def test_w604_with_multiple_instances(self):
-        line = '``1`` + ``b``\n'
-        fixed = 'repr(repr(1)) + repr(repr(b))\n'
-        with autopep8_context(line, options=['--aggressive']) as result:
-            self.assertEqual(fixed, result)
-
-    def test_w604_with_multiple_lines(self):
-        line = '`(1\n      )`\n'
-        fixed = 'repr((1\n      ))\n'
-        with autopep8_context(line, options=['--aggressive']) as result:
-            self.assertEqual(fixed, result)
-
     def test_w605_simple(self):
         line = "escape = '\\.jpg'\n"
         fixed = "escape = '\\\\.jpg'\n"
