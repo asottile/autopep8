@@ -86,6 +86,7 @@ import ast
 from configparser import ConfigParser as SafeConfigParser
 from configparser import Error
 
+import chardet
 import pycodestyle
 from pycodestyle import STARTSWITH_INDENT_STATEMENT_REGEX
 
@@ -144,22 +145,6 @@ CONFLICTING_CODES = ('W503', 'W504')
 
 SELECTED_GLOBAL_FIXED_METHOD_CODES = ['W602', ]
 
-# W602 is handled separately due to the need to avoid "with_traceback".
-CODE_TO_2TO3 = {
-    'W690': ['apply',
-             'except',
-             'exitfunc',
-             'numliterals',
-             'operator',
-             'paren',
-             'reduce',
-             'renames',
-             'standarderror',
-             'sys_exc',
-             'tuple_params',
-             'xreadlines']}
-
-
 if sys.platform == 'win32':  # pragma: no cover
     DEFAULT_CONFIG = os.path.expanduser(r'~\.pycodestyle')
 else:
@@ -178,28 +163,22 @@ PROJECT_CONFIG = ('setup.cfg', 'tox.ini', '.pep8', '.flake8')
 MAX_PYTHON_FILE_DETECTION_BYTES = 1024
 
 
-def open_with_encoding(filename, mode='r', encoding=None, limit_byte_check=-1):
+def open_with_encoding(filename, mode='r', encoding=None):
     """Return opened file with a specific encoding."""
     if not encoding:
-        encoding = detect_encoding(filename, limit_byte_check=limit_byte_check)
+        encoding = detect_encoding(filename)
 
     return io.open(filename, mode=mode, encoding=encoding,
                    newline='')  # Preserve line endings
 
 
-def detect_encoding(filename, limit_byte_check=-1):
+def detect_encoding(filename):
     """Return file encoding."""
-    try:
-        with open(filename, 'rb') as input_file:
-            from lib2to3.pgen2 import tokenize as lib2to3_tokenize
-            encoding = lib2to3_tokenize.detect_encoding(input_file.readline)[0]
+    encoding = None
+    with open(filename, 'rb') as input_file:
+        encoding = chardet.detect(input_file.read()).get('encoding')
 
-        with open_with_encoding(filename, encoding=encoding) as test_file:
-            test_file.read(limit_byte_check)
-
-        return encoding
-    except (LookupError, SyntaxError, UnicodeDecodeError):
-        return 'latin-1'
+    return encoding or sys.getdefaultencoding()
 
 
 def readlines_from_file(filename):
@@ -1769,77 +1748,6 @@ def fix_e265(source, aggressive=False):  # pylint: disable=unused-argument
     return ''.join(fixed_lines)
 
 
-def refactor(source, fixer_names, ignore=None, filename=''):
-    """Return refactored code using lib2to3.
-
-    Skip if ignore string is produced in the refactored code.
-
-    """
-    not_found_end_of_file_newline = source and source.rstrip("\r\n") == source
-    if not_found_end_of_file_newline:
-        input_source = source + "\n"
-    else:
-        input_source = source
-
-    from lib2to3 import pgen2
-    try:
-        new_text = refactor_with_2to3(input_source,
-                                      fixer_names=fixer_names,
-                                      filename=filename)
-    except (pgen2.parse.ParseError,
-            SyntaxError,
-            UnicodeDecodeError,
-            UnicodeEncodeError):
-        return source
-
-    if ignore:
-        if ignore in new_text and ignore not in source:
-            return source
-
-    if not_found_end_of_file_newline:
-        return new_text.rstrip("\r\n")
-
-    return new_text
-
-
-def code_to_2to3(select, ignore, where='', verbose=False):
-    fixes = set()
-    for code, fix in CODE_TO_2TO3.items():
-        if code_match(code, select=select, ignore=ignore):
-            if verbose:
-                print('--->  Applying {} fix for {}'.format(where,
-                                                            code.upper()),
-                      file=sys.stderr)
-            fixes |= set(fix)
-    return fixes
-
-
-def fix_2to3(source,
-             aggressive=True, select=None, ignore=None, filename='',
-             where='global', verbose=False):
-    """Fix various deprecated code (via lib2to3)."""
-    if not aggressive:
-        return source
-
-    select = select or []
-    ignore = ignore or []
-
-    return refactor(source,
-                    code_to_2to3(select=select,
-                                 ignore=ignore,
-                                 where=where,
-                                 verbose=verbose),
-                    filename=filename)
-
-
-def fix_w602(source, aggressive=True):
-    """Fix deprecated form of raising exception."""
-    if not aggressive:
-        return source
-
-    return refactor(source, ['raise'], ignore='with_traceback')
-
-
 def find_newline(source):
     """Return type of newline used in source.
 
@@ -3231,24 +3139,6 @@ def _leading_space_count(line):
     return i
 
 
-def refactor_with_2to3(source_text, fixer_names, filename=''):
-    """Use lib2to3 to refactor the source.
-
-    Return the refactored source code.
-
-    """
-    from lib2to3.refactor import RefactoringTool
-    fixers = ['lib2to3.fixes.fix_' + name for name in fixer_names]
-    tool = RefactoringTool(fixer_names=fixers, explicit=fixers)
-
-    from lib2to3.pgen2 import tokenize as lib2to3_tokenize
-    try:
-        # The name parameter is necessary particularly for the "import" fixer.
-        return str(tool.refactor_string(source_text, name=filename))
-    except lib2to3_tokenize.TokenError:
-        return source_text
-
-
 def check_syntax(code):
     """Return True if syntax is okay."""
     try:
@@ -3737,14 +3627,6 @@ def apply_global_fixes(source, options, where='global', filename='',
             source = function(source,
                               aggressive=options.aggressive)
 
-    source = fix_2to3(source,
-                      aggressive=options.aggressive,
-                      select=options.select,
-                      ignore=options.ignore,
-                      filename=filename,
-                      where=where,
-                      verbose=options.verbose)
-
     return source
 
 
@@ -4158,10 +4040,6 @@ def supported_fixes():
         yield (code.upper() + (4 - len(code)) * ' ',
                re.sub(r'\s+', ' ', docstring_summary(function.__doc__)))
 
-    for code in sorted(CODE_TO_2TO3):
-        yield (code.upper() + (4 - len(code)) * ' ',
-               re.sub(r'\s+', ' ', docstring_summary(fix_2to3.__doc__)))
-
 
 def docstring_summary(docstring):
     """Return summary of docstring."""
@@ -4480,14 +4358,12 @@ def is_python_file(filename):
         return True
 
     try:
-        with open_with_encoding(
-                filename,
-                limit_byte_check=MAX_PYTHON_FILE_DETECTION_BYTES) as f:
+        with open_with_encoding(filename) as f:
             text = f.read(MAX_PYTHON_FILE_DETECTION_BYTES)
             if not text:
                 return False
             first_line = text.splitlines()[0]
-    except (IOError, IndexError):
+    except (IOError, IndexError, UnicodeDecodeError):
         return False
 
     if not PYTHON_SHEBANG_REGEX.match(first_line):

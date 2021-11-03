@@ -10,7 +10,7 @@ from setuptools import setup
 
 
 INSTALL_REQUIRES = (
-    ['pycodestyle >= 2.8.0', 'toml']
+    ['pycodestyle >= 2.8.0', 'toml', 'chardet']
 )
 
 
@@ -30,7 +30,7 @@ with io.open('README.rst') as readme:
                     'to the PEP 8 style guide',
         long_description=readme.read(),
         license='Expat License',
-        author='Hideo Hattori',
+        author='Hideo Hattoriは',
         author_email='hhatto.jp@gmail.com',
         url='https://github.com/hhatto/autopep8',
         classifiers=[

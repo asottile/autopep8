@@ -94,7 +94,7 @@ class UnitTests(unittest.TestCase):
 
     def test_detect_encoding_with_cookie(self):
         self.assertEqual(
-            'iso-8859-1',
+            'ISO-8859-1',
             autopep8.detect_encoding(
                 os.path.join(ROOT_DIR, 'test', 'iso_8859_1.py')))
 
@@ -386,21 +386,6 @@ def foo():
         self.assertEqual(['12', '3', '4'],
                          autopep8.split_at_offsets('1234', [3, 2]))
 
-    def test_fix_2to3(self):
-        self.assertEqual(
-            'try: pass\nexcept ValueError as e: pass\n',
-            autopep8.fix_2to3('try: pass\nexcept ValueError, e: pass\n'))
-
-        self.assertEqual(
-            """\
-import sys
-sys.maxsize
-""",
-            autopep8.fix_2to3("""\
-import sys
-sys.maxint
-"""))
-
     def test_is_python_file(self):
         self.assertTrue(autopep8.is_python_file(
             os.path.join(ROOT_DIR, 'autopep8.py')))
@@ -690,16 +675,6 @@ print('python')
             1,
             autopep8.count_unbalanced_brackets(
                 "'','.join(['%s=%s' % (col, col)')"))
-
-    def test_refactor_with_2to3(self):
-        self.assertEqual(
-            '1 in {}\n',
-            autopep8.refactor_with_2to3('{}.has_key(1)\n', ['has_key']))
-
-    def test_refactor_with_2to3_should_handle_syntax_error_gracefully(self):
-        self.assertEqual(
-            '{}.has_key(1\n',
-            autopep8.refactor_with_2to3('{}.has_key(1\n', ['has_key']))
 
     def test_commented_out_code_lines(self):
         self.assertEqual(
@@ -4745,174 +4720,6 @@ if True:
         with autopep8_context(line, options=['-aa', '--select=E,W5']) as result:
             self.assertEqual(fixed, result)
         with autopep8_context(line, options=['-aa', '--select=E,W50']) as result:
-            self.assertEqual(fixed, result)
-
-    def test_w602_arg_is_string(self):
-        line = "raise ValueError, \"w602 test\"\n"
-        fixed = "raise ValueError(\"w602 test\")\n"
-        with autopep8_context(line, options=['--aggressive']) as result:
-            self.assertEqual(fixed, result)
-
-    def test_w602_arg_is_string_with_comment(self):
-        line = "raise ValueError, \"w602 test\"  # comment\n"
-        fixed = "raise ValueError(\"w602 test\")  # comment\n"
-        with autopep8_context(line, options=['--aggressive']) as result:
-            self.assertEqual(fixed, result)
-
-    def test_w602_skip_ambiguous_case(self):
-        line = "raise 'a', 'b', 'c'\n"
-        with autopep8_context(line, options=['--aggressive']) as result:
-            self.assertEqual(line, result)
-
-    def test_w602_with_logic(self):
-        line = "raise TypeError, e or 'hello'\n"
-        fixed = "raise TypeError(e or 'hello')\n"
-        with autopep8_context(line, options=['--aggressive']) as result:
-            self.assertEqual(fixed, result)
-
-    def test_w602_triple_quotes(self):
-        line = 'raise ValueError, """hello"""\n1\n'
-        fixed = 'raise ValueError("""hello""")\n1\n'
-        with autopep8_context(line, options=['--aggressive']) as result:
-            self.assertEqual(fixed, result)
-
-    def test_w602_multiline(self):
-        line = 'raise ValueError, """\nhello"""\n'
-        fixed = 'raise ValueError("""\nhello""")\n'
-        with autopep8_context(line, options=['--aggressive']) as result:
-            self.assertEqual(fixed, result)
-
-    def test_w602_with_complex_multiline(self):
-        line = 'raise ValueError, """\nhello %s %s""" % (\n    1, 2)\n'
-        fixed = 'raise ValueError("""\nhello %s %s""" % (\n    1, 2))\n'
-        with autopep8_context(line, options=['--aggressive']) as result:
-            self.assertEqual(fixed, result)
-
-    def test_w602_multiline_with_trailing_spaces(self):
-        line = 'raise ValueError, """\nhello"""    \n'
-        fixed = 'raise ValueError("""\nhello""")\n'
-        with autopep8_context(line, options=['--aggressive']) as result:
-            self.assertEqual(fixed, result)
-
-    def test_w602_multiline_with_escaped_newline(self):
-        line = 'raise ValueError, \\\n"""\nhello"""\n'
-        fixed = 'raise ValueError("""\nhello""")\n'
-        with autopep8_context(line, options=['--aggressive']) as result:
-            self.assertEqual(fixed, result)
-
-    def test_w602_multiline_with_escaped_newline_and_comment(self):
-        line = 'raise ValueError, \\\n"""\nhello"""  # comment\n'
-        fixed = 'raise ValueError("""\nhello""")  # comment\n'
-        with autopep8_context(line, options=['--aggressive']) as result:
-            self.assertEqual(fixed, result)
-
-    def test_w602_multiline_with_multiple_escaped_newlines(self):
-        line = 'raise ValueError, \\\n\\\n\\\n"""\nhello"""\n'
-        fixed = 'raise ValueError("""\nhello""")\n'
-        with autopep8_context(line, options=['--aggressive']) as result:
-            self.assertEqual(fixed, result)
-
-    def test_w602_multiline_with_nested_quotes(self):
-        line = 'raise ValueError, """hello\'\'\'blah"a"b"c"""\n'
-        fixed = 'raise ValueError("""hello\'\'\'blah"a"b"c""")\n'
-        with autopep8_context(line, options=['--aggressive']) as result:
-            self.assertEqual(fixed, result)
-
-    def test_w602_with_multiline_with_single_quotes(self):
-        line = "raise ValueError, '''\nhello'''\n"
-        fixed = "raise ValueError('''\nhello''')\n"
-        with autopep8_context(line, options=['--aggressive']) as result:
-            self.assertEqual(fixed, result)
-
-    def test_w602_multiline_string_stays_the_same(self):
-        line = 'raise """\nhello"""\n'
-        with autopep8_context(line, options=['--aggressive']) as result:
-            self.assertEqual(line, result)
-
-    def test_w602_escaped_lf(self):
-        line = 'raise ValueError, \\\n"hello"\n'
-        fixed = 'raise ValueError("hello")\n'
-        with autopep8_context(line, options=['--aggressive']) as result:
-            self.assertEqual(fixed, result)
-
-    def test_w602_escaped_crlf(self):
-        line = 'raise ValueError, \\\r\n"hello"\r\n'
-        fixed = 'raise ValueError("hello")\r\n'
-        with autopep8_context(line, options=['--aggressive']) as result:
-            self.assertEqual(fixed, result)
-
-    def test_w602_indentation(self):
-        line = 'def foo():\n    raise ValueError, "hello"\n'
-        fixed = 'def foo():\n    raise ValueError("hello")\n'
-        with autopep8_context(line, options=['--aggressive']) as result:
-            self.assertEqual(fixed, result)
-
-    def test_w602_escaped_cr(self):
-        line = 'raise ValueError, \\\r"hello"\n\n'
-        fixed = 'raise ValueError("hello")\n'
-        with autopep8_context(line, options=['--aggressive']) as result:
-            self.assertEqual(fixed, result)
-
-    def test_w602_multiple_statements(self):
-        line = 'raise ValueError, "hello";print 1\n'
-        fixed = 'raise ValueError("hello")\nprint 1\n'
-        with autopep8_context(line, options=['--aggressive']) as result:
-            self.assertEqual(fixed, result)
-
-    def test_w602_raise_argument_with_indentation(self):
-        line = 'if True:\n    raise ValueError, "error"\n'
-        fixed = 'if True:\n    raise ValueError("error")\n'
-        with autopep8_context(line, options=['--aggressive']) as result:
-            self.assertEqual(fixed, result)
-
-    def test_w602_skip_raise_argument_triple(self):
-        line = 'raise ValueError, "info", traceback\n'
-        with autopep8_context(line, options=['--aggressive']) as result:
-            self.assertEqual(line, result)
-
-    def test_w602_skip_raise_argument_triple_with_comment(self):
-        line = 'raise ValueError, "info", traceback  # comment\n'
-        with autopep8_context(line, options=['--aggressive']) as result:
-            self.assertEqual(line, result)
-
-    def test_w602_raise_argument_triple_fake(self):
-        line = 'raise ValueError, "info, info2"\n'
-        fixed = 'raise ValueError("info, info2")\n'
-        with autopep8_context(line, options=['--aggressive']) as result:
-            self.assertEqual(fixed, result)
-
-    def test_w602_with_list_comprehension(self):
-        line = 'raise Error, [x[0] for x in probs]\n'
-        fixed = 'raise Error([x[0] for x in probs])\n'
-        with autopep8_context(line, options=['--aggressive']) as result:
-            self.assertEqual(fixed, result)
-
-    def test_w602_with_bad_syntax(self):
-        line = "raise Error, 'abc\n"
-        with autopep8_context(line, options=['--aggressive']) as result:
-            self.assertEqual(line, result)
-
-    def test_w602_invalid_2to3_fixed_case(self):
-        line = """\
-raise (ValueError
-       if True else TypeError)
-"""
-        with autopep8_context(line, options=['--aggressive']) as result:
-            self.assertEqual(line, result)
-
-    @unittest.skip('TODO')
-    def test_w602_invalid_2to3_fixed_case_with_valid_syntax(self):
-        line = """\
-raise (ValueError
-       if True else TypeError)
-raise ValueError, "error"
-"""
-        fixed = """\
-raise (ValueError
-       if True else TypeError)
-raise ValueError("error")
-"""
-        with autopep8_context(line, options=['--aggressive']) as result:
             self.assertEqual(fixed, result)
 
     def test_w603(self):
